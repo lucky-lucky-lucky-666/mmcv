@@ -42,7 +42,7 @@ class Cache:
 class VideoReader:
     """Video class with similar usage to a list object.
 
-    This video warpper class provides convenient apis to access frames.
+    This video wrapper class provides convenient apis to access frames.
     There exists an issue of OpenCV's VideoCapture class that jumping to a
     certain frame may be inaccurate. It is fixed in this class by checking
     the position after jumping each time.
@@ -272,14 +272,14 @@ class VideoReader:
         self._vcap.release()
 
 
-def frames2video(frame_dir,
-                 video_file,
-                 fps=30,
-                 fourcc='XVID',
-                 filename_tmpl='{:06d}.jpg',
-                 start=0,
-                 end=0,
-                 show_progress=True):
+def frames2video(frame_dir: str,
+                 video_file: str,
+                 fps: float = 30,
+                 fourcc: str = 'XVID',
+                 filename_tmpl: str = '{:06d}.jpg',
+                 start: int = 0,
+                 end: int = 0,
+                 show_progress: bool = True) -> None:
     """Read the frame images from a directory and join them as a video.
 
     Args:

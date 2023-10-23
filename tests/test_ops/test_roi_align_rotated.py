@@ -1,6 +1,9 @@
+# Copyright (c) OpenMMLab. All rights reserved.
 import numpy as np
 import pytest
 import torch
+
+from mmcv.utils import IS_CUDA_AVAILABLE, IS_MLU_AVAILABLE
 
 _USING_PARROTS = True
 try:
@@ -50,8 +53,6 @@ sampling_ratio = 2
 
 
 def _test_roialign_rotated_gradcheck(device, dtype):
-    if not torch.cuda.is_available() and device == 'cuda':
-        pytest.skip('unittest does not support GPU yet.')
     try:
         from mmcv.ops import RoIAlignRotated
     except ModuleNotFoundError:
@@ -68,7 +69,6 @@ def _test_roialign_rotated_gradcheck(device, dtype):
 
         froipool = RoIAlignRotated((pool_h, pool_w), spatial_scale,
                                    sampling_ratio)
-
         if torch.__version__ == 'parrots':
             gradcheck(
                 froipool, (x, rois), no_grads=[rois], delta=1e-5, pt_atol=1e-5)
@@ -77,10 +77,8 @@ def _test_roialign_rotated_gradcheck(device, dtype):
 
 
 def _test_roialign_rotated_allclose(device, dtype):
-    if not torch.cuda.is_available() and device == 'cuda':
-        pytest.skip('unittest does not support GPU yet.')
     try:
-        from mmcv.ops import roi_align_rotated
+        from mmcv.ops import RoIAlignRotated, roi_align_rotated
     except ModuleNotFoundError:
         pytest.skip('test requires compilation')
     pool_h = 2
@@ -106,11 +104,48 @@ def _test_roialign_rotated_allclose(device, dtype):
         assert np.allclose(
             x.grad.data.type(torch.float).cpu().numpy(), np_grad, atol=1e-3)
 
+    # Test deprecated parameters
+    roi_align_rotated_module_deprecated = RoIAlignRotated(
+        out_size=(pool_h, pool_w),
+        spatial_scale=spatial_scale,
+        sample_num=sampling_ratio)
 
-@pytest.mark.parametrize('device', ['cuda', 'cpu'])
-@pytest.mark.parametrize('dtype', [torch.float, torch.double, torch.half])
+    output_1 = roi_align_rotated_module_deprecated(x, rois)
+
+    roi_align_rotated_module_new = RoIAlignRotated(
+        output_size=(pool_h, pool_w),
+        spatial_scale=spatial_scale,
+        sampling_ratio=sampling_ratio)
+
+    output_2 = roi_align_rotated_module_new(x, rois)
+
+    assert np.allclose(
+        output_1.data.type(torch.float).cpu().numpy(),
+        output_2.data.type(torch.float).cpu().numpy())
+
+
+@pytest.mark.parametrize('device', [
+    'cpu',
+    pytest.param(
+        'cuda',
+        marks=pytest.mark.skipif(
+            not IS_CUDA_AVAILABLE, reason='requires CUDA support')),
+    pytest.param(
+        'mlu',
+        marks=pytest.mark.skipif(
+            not IS_MLU_AVAILABLE, reason='requires MLU support'))
+])
+@pytest.mark.parametrize('dtype', [
+    torch.float,
+    pytest.param(
+        torch.double,
+        marks=pytest.mark.skipif(
+            IS_MLU_AVAILABLE,
+            reason='MLU does not support for 64-bit floating point')),
+    torch.half
+])
 def test_roialign_rotated(device, dtype):
     # check double only
-    if (dtype is torch.double):
+    if dtype is torch.double:
         _test_roialign_rotated_gradcheck(device=device, dtype=dtype)
     _test_roialign_rotated_allclose(device=device, dtype=dtype)

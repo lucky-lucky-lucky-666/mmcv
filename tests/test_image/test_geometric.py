@@ -461,6 +461,10 @@ class TestGeometric:
         with pytest.raises(AssertionError):
             mmcv.impad(img, shape=(12, 15), padding=(0, 0, 5, 2))
 
+        # Pad shape smaller than image shape
+        padded_img = mmcv.impad(img, shape=(8, 8))
+        assert padded_img.shape == (10, 10, 3)
+
     def test_impad_to_multiple(self):
         img = np.random.rand(11, 14, 3).astype(np.float32)
         padded_img = mmcv.impad_to_multiple(img, 4)
@@ -523,6 +527,9 @@ class TestGeometric:
         assert_array_equal(mmcv.imrotate(img, 90, border_value=255), img_r)
         img_r = np.array([[5, 1], [6, 2], [7, 3], [8, 4]])
         assert_array_equal(mmcv.imrotate(img, 90, auto_bound=True), img_r)
+        img_r = np.array([[6, 6, 2, 2], [7, 7, 3, 3]])
+        assert_array_equal(
+            mmcv.imrotate(img, 90, border_mode='replicate'), img_r)
 
         with pytest.raises(ValueError):
             mmcv.imrotate(img, 90, center=(0, 0), auto_bound=True)

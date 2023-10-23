@@ -1,3 +1,4 @@
+# Copyright (c) OpenMMLab. All rights reserved.
 import os
 from functools import partial
 from typing import Callable
@@ -7,6 +8,7 @@ import onnx
 import pytest
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 try:
     from mmcv.tensorrt import (TRTWrapper, is_tensorrt_plugin_loaded, onnx2trt,
@@ -28,7 +30,7 @@ if not is_tensorrt_plugin_loaded():
 class WrapFunction(nn.Module):
 
     def __init__(self, wrapped_function):
-        super(WrapFunction, self).__init__()
+        super().__init__()
         self.wrapped_function = wrapped_function
 
     def forward(self, *args, **kwargs):
@@ -487,11 +489,10 @@ def test_grid_sample(mode, padding_mode, align_corners):
 
     input = torch.rand(1, 1, 10, 10).cuda()
     grid = torch.Tensor([[[1, 0, 0], [0, 1, 0]]])
-    grid = nn.functional.affine_grid(grid,
-                                     (1, 1, 15, 15)).type_as(input).cuda()
+    grid = F.affine_grid(grid, (1, 1, 15, 15)).type_as(input).cuda()
 
     def func(input, grid):
-        return nn.functional.grid_sample(
+        return F.grid_sample(
             input,
             grid,
             mode=mode,
@@ -575,7 +576,7 @@ def test_cummin_cummax(func: Callable):
     input_list = [
         # arbitrary shape, e.g. 1-D, 2-D, 3-D, ...
         torch.rand((2, 3, 4, 1, 5)).cuda(),
-        torch.rand((1)).cuda()
+        torch.rand(1).cuda()
     ]
 
     input_names = ['input']
@@ -652,7 +653,6 @@ def test_cummin_cummax(func: Callable):
 @pytest.mark.parametrize('dynamic_export', [True, False])
 @pytest.mark.parametrize('fp16_mode', [True, False])
 def test_instance_norm(dynamic_export, fp16_mode):
-
     n, c, h, w = 2, 3, 10, 10
     data = torch.randn(n, c, h, w).cuda()
     norm = nn.InstanceNorm2d(c, affine=True)
@@ -755,7 +755,7 @@ def test_corner_pool(mode):
     class CornerPoolWrapper(CornerPool):
 
         def __init__(self, mode):
-            super(CornerPoolWrapper, self).__init__(mode)
+            super().__init__(mode)
 
         def forward(self, x):
             # no use `torch.cummax`, instead `corner_pool` is used

@@ -1,3 +1,4 @@
+# Copyright (c) OpenMMLab. All rights reserved.
 import os
 import platform
 
@@ -13,7 +14,7 @@ else:
     import re
 
 
-class TestSyncBN(object):
+class TestSyncBN:
 
     def dist_init(self):
         rank = int(os.environ['SLURM_PROCID'])

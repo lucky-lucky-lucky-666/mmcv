@@ -1,3 +1,4 @@
+# Copyright (c) OpenMMLab. All rights reserved.
 import tempfile
 
 import pytest
@@ -88,9 +89,11 @@ class FooModel(BaseModule):
 def test_initilization_info_logger():
     # 'override' has higher priority
 
-    import torch.nn as nn
-    from mmcv.utils.logging import get_logger
     import os
+
+    import torch.nn as nn
+
+    from mmcv.utils.logging import get_logger
 
     class OverloadInitConv(nn.Conv2d, BaseModule):
 
@@ -102,7 +105,7 @@ def test_initilization_info_logger():
     class CheckLoggerModel(BaseModule):
 
         def __init__(self, init_cfg=None):
-            super(CheckLoggerModel, self).__init__(init_cfg)
+            super().__init__(init_cfg)
             self.conv1 = nn.Conv2d(1, 1, 1, 1)
             self.conv2 = OverloadInitConv(1, 1, 1, 1)
             self.conv3 = nn.Conv2d(1, 1, 1, 1)
@@ -148,7 +151,7 @@ def test_initilization_info_logger():
     class OverloadInitConvFc(nn.Conv2d, BaseModule):
 
         def __init__(self, *args, **kwargs):
-            super(OverloadInitConvFc, self).__init__(*args, **kwargs)
+            super().__init__(*args, **kwargs)
             self.conv1 = nn.Linear(1, 1)
 
         def init_weights(self):
@@ -159,7 +162,7 @@ def test_initilization_info_logger():
     class CheckLoggerModel(BaseModule):
 
         def __init__(self, init_cfg=None):
-            super(CheckLoggerModel, self).__init__(init_cfg)
+            super().__init__(init_cfg)
             self.conv1 = nn.Conv2d(1, 1, 1, 1)
             self.conv2 = OverloadInitConvFc(1, 1, 1, 1)
             self.conv3 = nn.Conv2d(1, 1, 1, 1)
@@ -168,7 +171,7 @@ def test_initilization_info_logger():
     class TopLevelModule(BaseModule):
 
         def __init__(self, init_cfg=None, checklog_init_cfg=None):
-            super(TopLevelModule, self).__init__(init_cfg)
+            super().__init__(init_cfg)
             self.module1 = CheckLoggerModel(checklog_init_cfg)
             self.module2 = OverloadInitConvFc(1, 1, 1, 1)
 
@@ -434,7 +437,6 @@ def test_without_layer_weight_init():
 
 
 def test_override_weight_init():
-
     # only initialize 'override'
     model_cfg = dict(
         type='FooModel',

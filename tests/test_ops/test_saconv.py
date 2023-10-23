@@ -1,3 +1,4 @@
+# Copyright (c) OpenMMLab. All rights reserved.
 import torch
 import torch.nn as nn
 
@@ -5,7 +6,6 @@ from mmcv.ops import SAConv2d
 
 
 def test_sacconv():
-
     # test with normal cast
     x = torch.rand(1, 3, 256, 256)
     saconv = SAConv2d(3, 5, kernel_size=3, padding=1)

@@ -1,3 +1,4 @@
+# Copyright (c) OpenMMLab. All rights reserved.
 import logging
 import os
 import platform
@@ -100,7 +101,7 @@ def test_print_log_logger(caplog):
         logger = get_logger('abc', log_file=f.name)
         print_log('welcome', logger=logger)
         assert caplog.record_tuples[-1] == ('abc', logging.INFO, 'welcome')
-        with open(f.name, 'r') as fin:
+        with open(f.name) as fin:
             log_text = fin.read()
             regex_time = r'\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3}'
             match = re.fullmatch(regex_time + r' - abc - INFO - welcome\n',

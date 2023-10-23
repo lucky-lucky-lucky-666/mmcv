@@ -1,7 +1,8 @@
+# Copyright (c) OpenMMLab. All rights reserved.
 import torch
 
 
-class TestInfo(object):
+class TestInfo:
 
     def test_info(self):
         if not torch.cuda.is_available():

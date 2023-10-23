@@ -1,10 +1,11 @@
+# Copyright (c) OpenMMLab. All rights reserved.
 import os
 
 import numpy
 import pytest
 import torch
 
-from mmcv.utils import TORCH_VERSION, digit_version
+from mmcv.utils import IS_MLU_AVAILABLE, TORCH_VERSION, digit_version
 
 try:
     # If PyTorch version >= 1.6.0 and fp16 is enabled, torch.cuda.amp.autocast
@@ -36,15 +37,19 @@ dcn_offset_b_grad = [
 ]
 
 
-class TestMdconv(object):
+class TestMdconv:
 
     def _test_mdconv(self, dtype=torch.float, device='cuda'):
         if not torch.cuda.is_available() and device == 'cuda':
             pytest.skip('test requires GPU')
-        from mmcv.ops import ModulatedDeformConv2dPack
+        if device == 'mlu':
+            from mmcv.ops import \
+                ModulatedDeformConv2dPack_MLU as ModulatedDeformConv2dPack
+        else:
+            from mmcv.ops import ModulatedDeformConv2dPack
+
         input = torch.tensor(input_t, dtype=dtype, device=device)
         input.requires_grad = True
-
         dcn = ModulatedDeformConv2dPack(
             1,
             1,
@@ -52,10 +57,7 @@ class TestMdconv(object):
             stride=1,
             padding=1,
             deform_groups=1,
-            bias=False)
-
-        if device == 'cuda':
-            dcn.cuda()
+            bias=False).to(device)
 
         dcn.weight.data.fill_(1.)
         dcn.type(dtype)
@@ -72,7 +74,7 @@ class TestMdconv(object):
         assert numpy.allclose(dcn.conv_offset.bias.grad.cpu().detach().numpy(),
                               dcn_offset_b_grad, 1e-2)
 
-    def _test_amp_mdconv(self, input_dtype=torch.float):
+    def _test_amp_mdconv(self, input_dtype=torch.float, device='cuda'):
         """The function to test amp released on pytorch 1.6.0.
 
         The type of input data might be torch.float or torch.half,
@@ -82,10 +84,15 @@ class TestMdconv(object):
         Args:
             input_dtype: torch.float or torch.half.
         """
-        if not torch.cuda.is_available():
+        if not torch.cuda.is_available() and device == 'cuda':
             return
-        from mmcv.ops import ModulatedDeformConv2dPack
-        input = torch.tensor(input_t).cuda().type(input_dtype)
+        if device == 'mlu':
+            from mmcv.ops import \
+                ModulatedDeformConv2dPack_MLU as ModulatedDeformConv2dPack
+        else:
+            from mmcv.ops import ModulatedDeformConv2dPack
+
+        input = torch.tensor(input_t).to(device).type(input_dtype)
         input.requires_grad = True
 
         dcn = ModulatedDeformConv2dPack(
@@ -95,7 +102,7 @@ class TestMdconv(object):
             stride=1,
             padding=1,
             deform_groups=1,
-            bias=False).cuda()
+            bias=False).to(device)
         dcn.weight.data.fill_(1.)
         output = dcn(input)
         output.sum().backward()
@@ -113,14 +120,16 @@ class TestMdconv(object):
     def test_mdconv(self):
         self._test_mdconv(torch.double, device='cpu')
         self._test_mdconv(torch.float, device='cpu')
-        self._test_mdconv(torch.double)
-        self._test_mdconv(torch.float)
-        self._test_mdconv(torch.half)
+
+        device = 'mlu' if IS_MLU_AVAILABLE else 'cuda'
+        self._test_mdconv(torch.double, device=device)
+        self._test_mdconv(torch.float, device=device)
+        self._test_mdconv(torch.half, device=device)
 
         # test amp when torch version >= '1.6.0', the type of
         # input data for mdconv might be torch.float or torch.half
         if (TORCH_VERSION != 'parrots'
                 and digit_version(TORCH_VERSION) >= digit_version('1.6.0')):
             with autocast(enabled=True):
-                self._test_amp_mdconv(torch.float)
-                self._test_amp_mdconv(torch.half)
+                self._test_amp_mdconv(torch.float, device=device)
+                self._test_amp_mdconv(torch.half, device=device)

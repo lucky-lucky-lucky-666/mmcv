@@ -31,7 +31,7 @@ void ms_deformable_im2col_cuda(cudaStream_t stream, const scalar_t *data_value,
                                const int num_point, scalar_t *data_col) {
   const int num_kernels = batch_size * num_query * num_heads * channels;
   const int num_actual_kernels = batch_size * num_query * num_heads * channels;
-  const int num_threads = CUDA_NUM_THREADS;
+  const int num_threads = THREADS_PER_BLOCK;
   ms_deformable_im2col_gpu_kernel<scalar_t>
       <<<GET_BLOCKS(num_actual_kernels, num_threads), num_threads, 0, stream>>>(
           num_kernels, data_value, data_spatial_shapes, data_level_start_index,
@@ -54,11 +54,11 @@ void ms_deformable_col2im_cuda(
     const int num_point, scalar_t *grad_value, scalar_t *grad_sampling_loc,
     scalar_t *grad_attn_weight) {
   const int num_threads =
-      (channels > CUDA_NUM_THREADS) ? CUDA_NUM_THREADS : channels;
+      (channels > THREADS_PER_BLOCK) ? THREADS_PER_BLOCK : channels;
   const int num_kernels = batch_size * num_query * num_heads * channels;
   const int num_actual_kernels = batch_size * num_query * num_heads * channels;
-  if (channels > 1024) {
-    if ((channels & 1023) == 0) {
+  if (channels > THREADS_PER_BLOCK) {
+    if ((channels & THREADS_PER_BLOCK - 1) == 0) {
       ms_deformable_col2im_gpu_kernel_shm_reduce_v2_multi_blocks<scalar_t>
           <<<GET_BLOCKS(num_actual_kernels, num_threads), num_threads,
              num_threads * 3 * sizeof(scalar_t), stream>>>(
@@ -178,16 +178,6 @@ void ms_deformable_col2im_cuda(
                          channels, num_levels, num_query, num_point, grad_value,
                          grad_sampling_loc, grad_attn_weight);
         break;
-      case 1024:
-        ms_deformable_col2im_gpu_kernel_shm_blocksize_aware_reduce_v2<scalar_t,
-                                                                      1024>
-            <<<GET_BLOCKS(num_actual_kernels, num_threads), num_threads, 0,
-               stream>>>(num_kernels, grad_col, data_value, data_spatial_shapes,
-                         data_level_start_index, data_sampling_loc,
-                         data_attn_weight, batch_size, spatial_size, num_heads,
-                         channels, num_levels, num_query, num_point, grad_value,
-                         grad_sampling_loc, grad_attn_weight);
-        break;
       default:
         if (channels < 64) {
           ms_deformable_col2im_gpu_kernel_shm_reduce_v1<scalar_t>
@@ -265,7 +255,7 @@ at::Tensor ms_deform_attn_cuda_forward(const at::Tensor &value,
   auto per_attn_weight_size = num_query * num_heads * num_levels * num_point;
   for (int n = 0; n < batch / im2col_step_; ++n) {
     auto columns = output_n.select(0, n);
-    AT_DISPATCH_FLOATING_TYPES(
+    AT_DISPATCH_FLOATING_TYPES_AND_HALF(
         value.scalar_type(), "ms_deform_attn_forward_cuda", ([&] {
           ms_deformable_im2col_cuda(
               at::cuda::getCurrentCUDAStream(),
@@ -336,7 +326,7 @@ void ms_deform_attn_cuda_backward(
 
   for (int n = 0; n < batch / im2col_step_; ++n) {
     auto grad_output_g = grad_output_n.select(0, n);
-    AT_DISPATCH_FLOATING_TYPES(
+    AT_DISPATCH_FLOATING_TYPES_AND_HALF(
         value.scalar_type(), "ms_deform_attn_backward_cuda", ([&] {
           ms_deformable_col2im_cuda(
               at::cuda::getCurrentCUDAStream(),

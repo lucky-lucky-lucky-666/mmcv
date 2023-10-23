@@ -1,3 +1,4 @@
+# Copyright (c) OpenMMLab. All rights reserved.
 import pytest
 import torch
 
@@ -9,7 +10,7 @@ except ImportError:
     _USING_PARROTS = False
 
 
-class TestUpFirDn2d(object):
+class TestUpFirDn2d:
     """Unit test for UpFirDn2d.
 
     Here, we just test the basic case of upsample version. More gerneal tests

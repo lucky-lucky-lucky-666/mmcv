@@ -1,3 +1,4 @@
+# Copyright (c) OpenMMLab. All rights reserved.
 import numpy as np
 import pytest
 
@@ -69,7 +70,7 @@ def test_assert_dict_contains_subset():
 
 def test_assert_attrs_equal():
 
-    class TestExample(object):
+    class TestExample:
         a, b, c = 1, ('wvi', 3), [4.5, 3.14]
 
         def test_func(self):
@@ -103,7 +104,7 @@ def test_assert_attrs_equal():
 
     if torch is not None:
 
-        class TestExample(object):
+        class TestExample:
             a, b = torch.tensor([1]), torch.tensor([4, 5])
 
         # case 5
